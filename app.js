@@ -6,6 +6,14 @@ $(document).ready( function() {
 		var tags = $(this).find("input[name='tags']").val();
 		getUnanswered(tags);
 	});
+
+	$('.inspiration-getter').submit( function(event){
+		// clear results
+		$('.results').html('');
+		// get submitted tag
+		var tag = $(this).find("input[name='answerers']").val();
+		getTopAnswerers(tag);
+	})
 });
 
 // this function takes the question object returned by StackOverflow 
@@ -61,16 +69,18 @@ var showError = function(error){
 var getUnanswered = function(tags) {
 	
 	// the parameters we need to pass in our request to StackOverflow's API
-	var request = {tagged: tags,
-								site: 'stackoverflow',
-								order: 'desc',
-								sort: 'creation'};
+	var request = {
+		tagged: tags,
+		site: 'stackoverflow',
+		order: 'desc',
+		sort: 'creation'
+	};
 	
 	var result = $.ajax({
 		url: "http://api.stackexchange.com/2.2/questions/unanswered",
 		data: request,
 		dataType: "jsonp",
-		type: "GET",
+		type: "GET"
 		})
 	.done(function(result){
 		var searchResults = showSearchResults(request.tagged, result.items.length);
@@ -88,5 +98,55 @@ var getUnanswered = function(tags) {
 	});
 };
 
+var getTopAnswerers = function(tag) {
+	var result = $.ajax({
+		url: "https://api.stackexchange.com/2.2/tags/" + tag + "/top-answerers/all_time?site=stackoverflow",
+		dataType: "jsonp",
+		type: "GET"
+		})
+	.done(function(result){
+		console.log(result);
 
+		$('.search-results').html("Top 20 Answerers on the tag <strong>" + tag);
+		$.each(result.items, function(i, item) {
+			var answerer = showAnswerer(item);
+			$('.results').append(answerer)
+		});
+	})
+	.fail(function(jqXHR, error, errorThrown){
+		var errorElem = showError(error);
+		$('.search-results').append(errorElem);
+	});
+};
 
+var showAnswerer = function(item) {
+	// get template
+	var result = $('.templates .answerer').clone();
+
+	// procure profile pic
+	var picElem = result.find('.user-pic');
+	picElem.attr('src', item.user.profile_image);
+
+	// derive display name and precognize profile link
+	var name = result.find('.user-name');
+	name.attr('href', item.user.link);
+	name.text(item.user.display_name);
+
+	// pull post count
+	var posts = result.find('.post-count');
+	posts.text(item.post_count);
+
+	// tackle tag score
+	var tagScore = result.find('.tag-score');
+	tagScore.text(item.score);
+
+	// retrieve reputation
+	var siteRep = result.find('.reputation');
+	siteRep.text(item.user.reputation);
+
+	// attain accept rate 
+	var winRate = result.find('.accept-rate');
+	winRate.text(item.user.accept_rate + "%");
+
+	return result;
+};
